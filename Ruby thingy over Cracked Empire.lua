@@ -18,7 +18,7 @@ local Config = {
     SkipToTime = 205,
 
     -- Volume of the custom song
-    Volume = 2,
+    Volume = 1,
 }
 -- ================================================= --
 
