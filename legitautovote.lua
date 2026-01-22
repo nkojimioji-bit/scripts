@@ -7,7 +7,6 @@ local SelectMap = Workspace:WaitForChild("SelectMap")
 local Voted = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Voted")
 
 local enabled = false
-local fired = false
 local selected = "Sonic"
 local isOpen = false
 local isMinimized = false
@@ -17,6 +16,7 @@ local miniSize = UDim2.new(0, 230, 0, 35)
 
 print("[AutoVote] Script loaded (disabled)")
 
+-- GUI creation
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutoVoteGui"
 ScreenGui.ResetOnSpawn = false
@@ -107,6 +107,7 @@ DropList.Visible = false
 DropList.ZIndex = 10
 DropList.Parent = Content
 
+-- List of selectable characters
 local names = {
 	"Amy","MetalSonic","Eggman","Blaze","Sonic",
 	"Silver","Knuckles","Cream","Tails",
@@ -167,27 +168,30 @@ CloseBtn.MouseButton1Click:Connect(function()
 	ScreenGui:Destroy()
 end)
 
-local function fireVote()
-	if fired or not enabled then return end
-	fired = true
-	print("[AutoVote] Folder detected, voting in 4s...")
-	task.delay(4, function()
-		if enabled then
-			print("[AutoVote] Fired vote:", selected)
-			Voted:FireServer(selected)
+-- Continuous voting function
+local function startVoting()
+	task.spawn(function()
+		while enabled do
+			print("[AutoVote] Voting:", selected)
+			pcall(function()
+				Voted:FireServer(selected)
+			end)
+			task.wait(4) -- 4 second delay between votes
 		end
 	end)
 end
 
-for _,c in ipairs(SelectMap:GetChildren()) do
-	if c:IsA("Folder") then
-		fireVote()
-		break
+-- Trigger continuous voting whenever a map folder is detected
+local function checkFolder(c)
+	if c:IsA("Folder") and enabled then
+		startVoting()
 	end
 end
 
-SelectMap.ChildAdded:Connect(function(c)
-	if c:IsA("Folder") then
-		fireVote()
-	end
-end)
+-- Initial detection
+for _,c in ipairs(SelectMap:GetChildren()) do
+	checkFolder(c)
+end
+
+-- Detect new folders dynamically
+SelectMap.ChildAdded:Connect(checkFolder)
