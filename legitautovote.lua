@@ -10,13 +10,15 @@ local enabled = false
 local selected = "Sonic"
 local isOpen = false
 local isMinimized = false
+local votingThreadRunning = false
 
 local fullSize = UDim2.new(0, 230, 0, 200)
 local miniSize = UDim2.new(0, 230, 0, 35)
 
 print("[AutoVote] Script loaded (disabled)")
 
--- GUI creation
+-- ================= GUI =================
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutoVoteGui"
 ScreenGui.ResetOnSpawn = false
@@ -30,7 +32,6 @@ Frame.BackgroundColor3 = Color3.fromRGB(30,30,45)
 Frame.BorderSizePixel = 0
 Frame.Active = true
 Frame.Draggable = true
-Frame.ClipsDescendants = false
 Frame.Parent = ScreenGui
 
 local TitleBar = Instance.new("Frame")
@@ -74,7 +75,6 @@ local Content = Instance.new("Frame")
 Content.Size = UDim2.new(1,0,1,-35)
 Content.Position = UDim2.new(0,0,0,35)
 Content.BackgroundTransparency = 1
-Content.ClipsDescendants = false
 Content.Parent = Frame
 
 local Toggle = Instance.new("TextButton")
@@ -107,7 +107,6 @@ DropList.Visible = false
 DropList.ZIndex = 10
 DropList.Parent = Content
 
--- List of selectable characters
 local names = {
 	"Amy","MetalSonic","Eggman","Blaze","Sonic",
 	"Silver","Knuckles","Cream","Tails",
@@ -140,58 +139,46 @@ DropBtn.MouseButton1Click:Connect(function()
 	isOpen = not isOpen
 	DropList.Visible = isOpen
 	DropList.Size = isOpen and UDim2.new(1,-20,0,#names*26) or UDim2.new(1,-20,0,0)
-	print("[AutoVote] Dropdown:", isOpen and "Opened" or "Closed")
 end)
+
+-- ================= CORE FIX =================
+
+local function startVoting()
+	if votingThreadRunning then return end
+	votingThreadRunning = true
+
+	task.spawn(function()
+		while enabled do
+			if SelectMap:FindFirstChildWhichIsA("Folder") then
+				print("[AutoVote] Voting:", selected)
+				pcall(function()
+					Voted:FireServer(selected)
+				end)
+			end
+			task.wait(4)
+		end
+		votingThreadRunning = false
+	end)
+end
 
 Toggle.MouseButton1Click:Connect(function()
 	enabled = not enabled
 	Toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,170,80) or Color3.fromRGB(170,0,0)
 	Toggle.Text = enabled and "Enabled" or "Disabled"
 	print("[AutoVote] Toggled:", enabled)
+
+	if enabled then
+		startVoting()
+	end
 end)
 
 MinBtn.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
-	if isMinimized then
-		Frame:TweenSize(miniSize, "Out", "Quad", 0.2, true)
-		Content.Visible = false
-		MinBtn.Text = "+"
-	else
-		Frame:TweenSize(fullSize, "Out", "Quad", 0.2, true)
-		Content.Visible = true
-		MinBtn.Text = "−"
-	end
+	Frame:TweenSize(isMinimized and miniSize or fullSize, "Out", "Quad", 0.2, true)
+	Content.Visible = not isMinimized
+	MinBtn.Text = isMinimized and "+" or "−"
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
-	print("[AutoVote] Closed GUI")
 	ScreenGui:Destroy()
 end)
-
--- Continuous voting function
-local function startVoting()
-	task.spawn(function()
-		while enabled do
-			print("[AutoVote] Voting:", selected)
-			pcall(function()
-				Voted:FireServer(selected)
-			end)
-			task.wait(4) -- 4 second delay between votes
-		end
-	end)
-end
-
--- Trigger continuous voting whenever a map folder is detected
-local function checkFolder(c)
-	if c:IsA("Folder") and enabled then
-		startVoting()
-	end
-end
-
--- Initial detection
-for _,c in ipairs(SelectMap:GetChildren()) do
-	checkFolder(c)
-end
-
--- Detect new folders dynamically
-SelectMap.ChildAdded:Connect(checkFolder)
