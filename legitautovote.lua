@@ -172,7 +172,7 @@ task.spawn(function()
                 voteFolder(folder)
             end
         end
-        task.wait(1)
+        task.wait(4)
     end
 end)
 
