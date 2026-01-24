@@ -14,6 +14,8 @@ local isMinimized = false
 local fullSize = UDim2.new(0, 230, 0, 200)
 local miniSize = UDim2.new(0, 230, 0, 35)
 
+local voteDelay = 4 -- seconds to wait before voting
+
 print("[AutoVote] Script loaded (disabled)")
 
 -- ================= GUI =================
@@ -152,10 +154,15 @@ end)
 local function voteFolder(folder)
     if not enabled then return end
     if folder and folder:IsA("Folder") then
-        pcall(function()
-            Voted:FireServer(selected)
+        task.spawn(function()
+            task.wait(voteDelay)  -- wait a bit before voting
+            if enabled then
+                pcall(function()
+                    Voted:FireServer(selected)
+                end)
+                print("[AutoVote] Voting for:", selected)
+            end
         end)
-        print("[AutoVote] Voting for:", selected)
     end
 end
 
