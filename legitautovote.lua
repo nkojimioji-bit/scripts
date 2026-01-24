@@ -108,77 +108,104 @@ DropList.ZIndex = 10
 DropList.Parent = Content
 
 local names = {
-	"Amy","MetalSonic","Eggman","Blaze","Sonic",
-	"Silver","Knuckles","Cream","Tails",
-	"Kolossos","TailsDoll","2011x"
+    "Amy","MetalSonic","Eggman","Blaze","Sonic",
+    "Silver","Knuckles","Cream","Tails",
+    "Kolossos","TailsDoll","2011x"
 }
 
 for i,name in ipairs(names) do
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1,0,0,26)
-	btn.Position = UDim2.new(0,0,0,(i-1)*26)
-	btn.BackgroundColor3 = Color3.fromRGB(45,45,70)
-	btn.Text = name
-	btn.TextColor3 = Color3.fromRGB(220,220,255)
-	btn.Font = Enum.Font.Gotham
-	btn.TextSize = 13
-	btn.ZIndex = 11
-	btn.Parent = DropList
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,0,0,26)
+    btn.Position = UDim2.new(0,0,0,(i-1)*26)
+    btn.BackgroundColor3 = Color3.fromRGB(45,45,70)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(220,220,255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.ZIndex = 11
+    btn.Parent = DropList
 
-	btn.MouseButton1Click:Connect(function()
-		selected = name
-		DropBtn.Text = name
-		DropList.Visible = false
-		DropList.Size = UDim2.new(1,-20,0,0)
-		isOpen = false
-		print("[AutoVote] Selected:", name)
-	end)
+    btn.MouseButton1Click:Connect(function()
+        selected = name
+        DropBtn.Text = name
+        DropList.Visible = false
+        DropList.Size = UDim2.new(1,-20,0,0)
+        isOpen = false
+        print("[AutoVote] Selected:", name)
+    end)
 end
 
 DropBtn.MouseButton1Click:Connect(function()
-	isOpen = not isOpen
-	DropList.Visible = isOpen
-	DropList.Size = isOpen and UDim2.new(1,-20,0,#names*26) or UDim2.new(1,-20,0,0)
+    isOpen = not isOpen
+    DropList.Visible = isOpen
+    DropList.Size = isOpen and UDim2.new(1,-20,0,#names*26) or UDim2.new(1,-20,0,0)
 end)
 
--- ================= CORE FIX =================
+-- ================= CORE FIX (Robust AutoVote) =================
 
 local function startVoting()
-	if votingThreadRunning then return end
-	votingThreadRunning = true
+    if votingThreadRunning then return end
+    votingThreadRunning = true
 
-	task.spawn(function()
-		while enabled do
-			if SelectMap:FindFirstChildWhichIsA("Folder") then
-				print("[AutoVote] Voting:", selected)
-				pcall(function()
-					Voted:FireServer(selected)
-				end)
-			end
-			task.wait(4)
-		end
-		votingThreadRunning = false
-	end)
+    print("[AutoVote] Voting thread started")
+
+    local lastVotedFolder = nil
+
+    -- Detect new folders dynamically
+    local connection
+    connection = SelectMap.ChildAdded:Connect(function(child)
+        if not enabled then return end
+        if child:IsA("Folder") and child ~= lastVotedFolder then
+            lastVotedFolder = child
+            print("[AutoVote] Voting for:", selected)
+            pcall(function()
+                Voted:FireServer(selected)
+            end)
+        end
+    end)
+
+    -- Thread to handle existing folders and cleanup
+    task.spawn(function()
+        while enabled do
+            local existingFolder = SelectMap:FindFirstChildWhichIsA("Folder")
+            if existingFolder and existingFolder ~= lastVotedFolder then
+                lastVotedFolder = existingFolder
+                print("[AutoVote] Voting for:", selected)
+                pcall(function()
+                    Voted:FireServer(selected)
+                end)
+            end
+            task.wait(1)
+        end
+
+        if connection then
+            connection:Disconnect()
+        end
+        votingThreadRunning = false
+        print("[AutoVote] Voting thread stopped")
+    end)
 end
 
+-- Toggle button
 Toggle.MouseButton1Click:Connect(function()
-	enabled = not enabled
-	Toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,170,80) or Color3.fromRGB(170,0,0)
-	Toggle.Text = enabled and "Enabled" or "Disabled"
-	print("[AutoVote] Toggled:", enabled)
+    enabled = not enabled
+    Toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,170,80) or Color3.fromRGB(170,0,0)
+    Toggle.Text = enabled and "Enabled" or "Disabled"
+    print("[AutoVote] Toggled:", enabled)
 
-	if enabled then
-		startVoting()
-	end
+    if enabled then
+        startVoting()
+    end
 end)
 
+-- Minimize / Close buttons
 MinBtn.MouseButton1Click:Connect(function()
-	isMinimized = not isMinimized
-	Frame:TweenSize(isMinimized and miniSize or fullSize, "Out", "Quad", 0.2, true)
-	Content.Visible = not isMinimized
-	MinBtn.Text = isMinimized and "+" or "−"
+    isMinimized = not isMinimized
+    Frame:TweenSize(isMinimized and miniSize or fullSize, "Out", "Quad", 0.2, true)
+    Content.Visible = not isMinimized
+    MinBtn.Text = isMinimized and "+" or "−"
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
-	ScreenGui:Destroy()
+    ScreenGui:Destroy()
 end)
