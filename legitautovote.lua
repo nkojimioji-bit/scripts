@@ -14,7 +14,7 @@ local isMinimized = false
 local fullSize = UDim2.new(0, 230, 0, 200)
 local miniSize = UDim2.new(0, 230, 0, 35)
 
-local voteDelay = 5 -- seconds to wait before voting
+local voteDelay = 4 -- seconds to wait before voting
 
 print("[AutoVote] Script loaded (disabled)")
 
@@ -151,11 +151,14 @@ end)
 
 -- ================= CORE FIX (Persistent AutoVote) =================
 
+local votedFolders = {}  -- track folders already voted on
+
 local function voteFolder(folder)
     if not enabled then return end
-    if folder and folder:IsA("Folder") then
+    if folder and folder:IsA("Folder") and not votedFolders[folder] then
+        votedFolders[folder] = true  -- mark as voted
         task.spawn(function()
-            task.wait(voteDelay)  -- wait a bit before voting
+            task.wait(voteDelay)  -- delay before voting
             if enabled then
                 pcall(function()
                     Voted:FireServer(selected)
@@ -166,24 +169,18 @@ local function voteFolder(folder)
     end
 end
 
--- ChildAdded listener for new folders
+-- Vote on existing folders once
+for _, folder in ipairs(SelectMap:GetChildren()) do
+    voteFolder(folder)
+end
+
+-- Vote on new folders when added
 SelectMap.ChildAdded:Connect(function(child)
     voteFolder(child)
 end)
 
--- Persistent thread for existing folders
-task.spawn(function()
-    while true do
-        if enabled then
-            for _, folder in ipairs(SelectMap:GetChildren()) do
-                voteFolder(folder)
-            end
-        end
-        task.wait(1)
-    end
-end)
+-- ================= Minimize / Close =================
 
--- Minimize / Close buttons
 MinBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     Frame:TweenSize(isMinimized and miniSize or fullSize, "Out", "Quad", 0.2, true)
