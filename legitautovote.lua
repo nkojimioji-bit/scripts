@@ -10,7 +10,6 @@ local enabled = false
 local selected = "Sonic"
 local isOpen = false
 local isMinimized = false
-local votingThreadRunning = false
 
 local fullSize = UDim2.new(0, 230, 0, 200)
 local miniSize = UDim2.new(0, 230, 0, 35)
@@ -141,34 +140,39 @@ DropBtn.MouseButton1Click:Connect(function()
     DropList.Size = isOpen and UDim2.new(1,-20,0,#names*26) or UDim2.new(1,-20,0,0)
 end)
 
--- ================= CORE FIX (Robust AutoVote) =================
+Toggle.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    Toggle.Text = enabled and "Enabled" or "Disabled"
+    Toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,170,0) or Color3.fromRGB(170,0,0)
+    print("[AutoVote] Enabled:", enabled)
+end)
 
-local lastVotedFolder = nil
+-- ================= CORE FIX (Persistent AutoVote) =================
 
 local function voteFolder(folder)
     if not enabled then return end
-    if folder and folder ~= lastVotedFolder then
-        lastVotedFolder = folder
-        print("[AutoVote] Voting for:", selected)
+    if folder and folder:IsA("Folder") then
         pcall(function()
             Voted:FireServer(selected)
         end)
+        print("[AutoVote] Voting for:", selected)
     end
 end
 
--- Persistent listener for new folders
-SelectMap.ChildAdded:Connect(voteFolder)
+-- ChildAdded listener for new folders
+SelectMap.ChildAdded:Connect(function(child)
+    voteFolder(child)
+end)
 
--- Thread to handle existing folders every second
+-- Persistent thread for existing folders
 task.spawn(function()
     while true do
         if enabled then
-            local folder = SelectMap:FindFirstChildWhichIsA("Folder")
-            voteFolder(folder)
-        else
-            lastVotedFolder = nil -- reset when disabled
+            for _, folder in ipairs(SelectMap:GetChildren()) do
+                voteFolder(folder)
+            end
         end
-        task.wait(3)
+        task.wait(1)
     end
 end)
 
