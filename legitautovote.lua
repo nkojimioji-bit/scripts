@@ -143,58 +143,32 @@ end)
 
 -- ================= CORE FIX (Robust AutoVote) =================
 
-local function startVoting()
-    if votingThreadRunning then return end
-    votingThreadRunning = true
+local lastVotedFolder = nil
 
-    print("[AutoVote] Voting thread started")
-
-    local lastVotedFolder = nil
-
-    -- Detect new folders dynamically
-    local connection
-    connection = SelectMap.ChildAdded:Connect(function(child)
-        if not enabled then return end
-        if child:IsA("Folder") and child ~= lastVotedFolder then
-            lastVotedFolder = child
-            print("[AutoVote] Voting for:", selected)
-            pcall(function()
-                Voted:FireServer(selected)
-            end)
-        end
-    end)
-
-    -- Thread to handle existing folders and cleanup
-    task.spawn(function()
-        while enabled do
-            local existingFolder = SelectMap:FindFirstChildWhichIsA("Folder")
-            if existingFolder and existingFolder ~= lastVotedFolder then
-                lastVotedFolder = existingFolder
-                print("[AutoVote] Voting for:", selected)
-                pcall(function()
-                    Voted:FireServer(selected)
-                end)
-            end
-            task.wait(1)
-        end
-
-        if connection then
-            connection:Disconnect()
-        end
-        votingThreadRunning = false
-        print("[AutoVote] Voting thread stopped")
-    end)
+local function voteFolder(folder)
+    if not enabled then return end
+    if folder and folder ~= lastVotedFolder then
+        lastVotedFolder = folder
+        print("[AutoVote] Voting for:", selected)
+        pcall(function()
+            Voted:FireServer(selected)
+        end)
+    end
 end
 
--- Toggle button
-Toggle.MouseButton1Click:Connect(function()
-    enabled = not enabled
-    Toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,170,80) or Color3.fromRGB(170,0,0)
-    Toggle.Text = enabled and "Enabled" or "Disabled"
-    print("[AutoVote] Toggled:", enabled)
+-- Persistent listener for new folders
+SelectMap.ChildAdded:Connect(voteFolder)
 
-    if enabled then
-        startVoting()
+-- Thread to handle existing folders every second
+task.spawn(function()
+    while true do
+        if enabled then
+            local folder = SelectMap:FindFirstChildWhichIsA("Folder")
+            voteFolder(folder)
+        else
+            lastVotedFolder = nil -- reset when disabled
+        end
+        task.wait(3)
     end
 end)
 
