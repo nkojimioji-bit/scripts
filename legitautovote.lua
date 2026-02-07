@@ -14,7 +14,7 @@ local isMinimized = false
 local fullSize = UDim2.new(0, 230, 0, 200)
 local miniSize = UDim2.new(0, 230, 0, 35)
 
-local voteDelay = 5 -- seconds to wait before voting
+local voteDelay = 4 -- seconds to wait before voting
 
 print("[AutoVote] Script loaded (disabled)")
 
