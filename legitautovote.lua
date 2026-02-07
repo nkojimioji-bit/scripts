@@ -111,7 +111,7 @@ DropList.Parent = Content
 local names = {
     "Amy","MetalSonic","Eggman","Blaze","Sonic",
     "Silver","Knuckles","Cream","Tails",
-    "Kolossos","TailsDoll","2011x"
+    "Kolossos","Shadow","Fleetway"
 }
 
 for i,name in ipairs(names) do
