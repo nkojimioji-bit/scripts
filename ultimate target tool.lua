@@ -31,7 +31,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1,-70,1,0)
 Title.Position = UDim2.new(0,10,0,0)
 Title.BackgroundTransparency = 1
-Title.Text = "Ultra Targetter Tool"
+Title.Text = "Ultra Targetting Tool"
 Title.TextColor3 = Color3.fromRGB(220,220,255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -68,7 +68,7 @@ local TargetLabel = Instance.new("TextLabel")
 TargetLabel.Size = UDim2.new(1,-20,0,30)
 TargetLabel.Position = UDim2.new(0,10,0,10)
 TargetLabel.BackgroundTransparency = 1
-TargetLabel.Text = "target: NONE"
+TargetLabel.Text = "target: none"
 TargetLabel.TextColor3 = Color3.fromRGB(255,200,200)
 TargetLabel.Font = Enum.Font.Gotham
 TargetLabel.TextSize = 14
@@ -78,7 +78,7 @@ local TimerLabel = Instance.new("TextLabel")
 TimerLabel.Size = UDim2.new(1,-20,0,30)
 TimerLabel.Position = UDim2.new(0,10,0,40)
 TimerLabel.BackgroundTransparency = 1
-TimerLabel.Text = "timer: --"
+TimerLabel.Text = "time: --"
 TimerLabel.TextColor3 = Color3.fromRGB(200,200,255)
 TimerLabel.Font = Enum.Font.Gotham
 TimerLabel.TextSize = 14
@@ -88,7 +88,7 @@ local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1,-20,0,30)
 StatusLabel.Position = UDim2.new(0,10,0,70)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "status: IDLE"
+StatusLabel.Text = "status: idle"
 StatusLabel.TextColor3 = Color3.fromRGB(200,255,200)
 StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 14
@@ -117,6 +117,10 @@ local function isLastLife(model)
 	return model:GetAttribute("LastLife") == true
 end
 
+local function getCharacterName(model)
+	return model:GetAttribute("Character") or model.Name
+end
+
 local function pickSmartTarget()
 	local models = getSurvivorModels()
 	if #models == 0 then return nil end
@@ -139,32 +143,37 @@ local function punish()
 	DeathRemote:FireServer("Dead")
 end
 
+local function setTarget(model)
+	targetModel = model
+	timeLeft = CONTRACT_TIME
+	TargetLabel.Text = "target: "..getCharacterName(model)
+end
+
 local function startContract()
 	if not isEXE() then
-		StatusLabel.Text = "status: IDLE"
+		StatusLabel.Text = "status: idle"
 		return
 	end
 
-	targetModel = pickSmartTarget()
-	if not targetModel then
-		StatusLabel.Text = "status: NO TARGET"
+	local picked = pickSmartTarget()
+	if not picked then
+		StatusLabel.Text = "status: no target"
 		return
 	end
 
 	active = true
-	timeLeft = CONTRACT_TIME
-	TargetLabel.Text = "target: "..targetModel.Name
-	StatusLabel.Text = "status: TARGETTING"
+	setTarget(picked)
+	StatusLabel.Text = "status: targetting"
 
 	conn = RunService.Heartbeat:Connect(function(dt)
 		if not active then return end
 
 		timeLeft -= dt
-		TimerLabel.Text = "status: "..math.ceil(timeLeft)
+		TimerLabel.Text = "time: "..math.ceil(timeLeft)
 
 		if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(targetModel.Name)) then
 			active = false
-			StatusLabel.Text = "status: SUCCESS"
+			StatusLabel.Text = "status: success"
 			conn:Disconnect()
 			return
 		end
@@ -173,14 +182,13 @@ local function startContract()
 			lastLifeHistory[targetModel.Name] = true
 			local newTarget = pickSmartTarget()
 			if newTarget then
-				targetModel = newTarget
-				TargetLabel.Text = "target: "..newTarget.Name
+				setTarget(newTarget)
 			end
 		end
 
 		if timeLeft <= 0 then
 			active = false
-			StatusLabel.Text = "status: FAILED"
+			StatusLabel.Text = "status: failed"
 			conn:Disconnect()
 			punish()
 		end
