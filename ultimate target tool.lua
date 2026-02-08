@@ -5,7 +5,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local lp = Players.LocalPlayer
 local DeathRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Something")
 
-local CONTRACT_TIME = 165
+local BASE_TIME = 165
+
+local TIME_BONUS = {
+	Sonic = 35,
+	Shadow = 65,
+	Eggman = 100,
+	Cream = 35,
+	MetalSonic = 85
+}
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TargetGui"
@@ -111,27 +119,13 @@ local function getSurvivorModels()
 	return list
 end
 
-local lastLifeHistory = {}
-
-local function isLastLife(model)
-	return model:GetAttribute("LastLife") == true
-end
-
 local function getCharacterName(model)
 	return model:GetAttribute("Character") or model.Name
 end
 
-local function pickSmartTarget()
-	local models = getSurvivorModels()
-	if #models == 0 then return nil end
-	local fresh = {}
-	for _, model in ipairs(models) do
-		if not lastLifeHistory[model.Name] then
-			table.insert(fresh, model)
-		end
-	end
-	local pool = (#fresh > 0) and fresh or models
-	return pool[math.random(#pool)]
+local function getTimeForTarget(model)
+	local name = getCharacterName(model)
+	return BASE_TIME + (TIME_BONUS[name] or 0)
 end
 
 local active = false
@@ -143,27 +137,24 @@ local function punish()
 	DeathRemote:FireServer("Dead")
 end
 
-local function setTarget(model)
-	targetModel = model
-	timeLeft = CONTRACT_TIME
-	TargetLabel.Text = "target: "..getCharacterName(model)
-end
-
 local function startContract()
 	if not isEXE() then
 		StatusLabel.Text = "status: idle"
 		return
 	end
 
-	local picked = pickSmartTarget()
-	if not picked then
+	local models = getSurvivorModels()
+	if #models == 0 then
 		StatusLabel.Text = "status: no target"
 		return
 	end
 
-	active = true
-	setTarget(picked)
+	targetModel = models[math.random(#models)]
+	timeLeft = getTimeForTarget(targetModel)
+
+	TargetLabel.Text = "target: "..getCharacterName(targetModel)
 	StatusLabel.Text = "status: targetting"
+	active = true
 
 	conn = RunService.Heartbeat:Connect(function(dt)
 		if not active then return end
@@ -176,14 +167,6 @@ local function startContract()
 			StatusLabel.Text = "status: success"
 			conn:Disconnect()
 			return
-		end
-
-		if isLastLife(targetModel) then
-			lastLifeHistory[targetModel.Name] = true
-			local newTarget = pickSmartTarget()
-			if newTarget then
-				setTarget(newTarget)
-			end
 		end
 
 		if timeLeft <= 0 then
