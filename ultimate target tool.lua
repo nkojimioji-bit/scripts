@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local lp = Players.LocalPlayer
 local DeathRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Something")
 
-local CONTRACT_TIME = 150
+local CONTRACT_TIME = 165
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TargetGui"
