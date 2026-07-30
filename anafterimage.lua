@@ -3,7 +3,7 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 
-local AfterImageModule = {}
+local AfterImageModuleRef = {}
 AfterImageModule.__index = AfterImageModule
 AfterImageModule.GlobalCap = 48
 
